@@ -9,6 +9,7 @@ local targetResolvers = {}
 local supportedParameterTypes = {
     number = true,
     string = true,
+    message = true,
     boolean = true,
     coordinate = true,
     registry = true,
@@ -34,7 +35,7 @@ local function normalizeParameter(parameter)
     assert(type(normalized.label) == "string", "parameter label must be a string")
 
     if parameter.default ~= nil then
-        local defaultType = (parameterType == "registry" or parameterType == "target") and "string"
+        local defaultType = (parameterType == "registry" or parameterType == "target" or parameterType == "message") and "string"
             or parameterType == "coordinate" and "table"
             or parameterType
         assert(type(parameter.default) == defaultType, "parameter default must match its type")
@@ -225,7 +226,7 @@ local function validateValues(action, supplied, player)
         if value == nil then
             assert(not parameter.required, parameter.label .. " is required")
         else
-            local valueType = (parameter.type == "registry" or parameter.type == "target") and "string"
+            local valueType = (parameter.type == "registry" or parameter.type == "target" or parameter.type == "message") and "string"
                 or parameter.type == "coordinate" and "table"
                 or parameter.type
             assert(type(value) == valueType, parameter.label .. " must be a " .. valueType)

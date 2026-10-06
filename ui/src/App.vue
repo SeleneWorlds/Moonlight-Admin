@@ -38,6 +38,13 @@ const parameterSchema = z.discriminatedUnion('type', [
   z.object({
     name: z.string(),
     label: z.string(),
+    type: z.literal('message'),
+    required: z.boolean(),
+    default: z.string().optional(),
+  }),
+  z.object({
+    name: z.string(),
+    label: z.string(),
     type: z.literal('boolean'),
     required: z.boolean(),
     default: z.boolean().optional(),
@@ -620,6 +627,7 @@ onBeforeUnmount(() => {
                 :class="{
                   choice:
                     parameter.type === 'coordinate' || parameter.type === 'registry' || parameter.type === 'target',
+                  'full-width': parameter.type === 'message',
                 }"
               >
                 <span class="field-heading">
@@ -649,7 +657,7 @@ onBeforeUnmount(() => {
                   :step="parameter.step ?? 'any'"
                 />
                 <input
-                  v-else-if="parameter.type === 'string'"
+                  v-else-if="parameter.type === 'string' || parameter.type === 'message'"
                   v-model="values[action.id]![parameter.name] as string"
                   type="text"
                   :required="parameter.required"
@@ -1076,6 +1084,9 @@ h1 {
 }
 .choice {
   position: relative;
+}
+.choice,
+.full-width {
   grid-column: 1 / -1;
 }
 .select {

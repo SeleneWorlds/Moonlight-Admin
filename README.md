@@ -13,7 +13,7 @@ AdminMenu.registerAction({
     description = "An optional explanation shown in the menu.",
     parameters = {
         { name = "count", label = "Count", type = "number", default = 1, min = 1 },
-        { name = "message", label = "Message", type = "string" },
+        { name = "message", label = "Message", type = "message" },
         { name = "enabled", label = "Enabled", type = "boolean", default = true },
         { name = "destination", label = "Destination", type = "coordinate" },
         { name = "race", label = "Race", type = "registry", registry = "illarion:races" },
@@ -29,7 +29,8 @@ AdminMenu.registerAction({
 })
 ```
 
-Supported parameter types are `number`, `string`, `boolean`, `coordinate`, `registry`, and `target`.
+Supported parameter types are `number`, `string`, `message`, `boolean`, `coordinate`, `registry`, and `target`.
+Message parameters accept strings and span the full width of the action form.
 Coordinate parameters submit an `{ x, y, z }` table and can be entered manually or
 selected from the world with the tile picker.
 Registry parameters are populated from the named Selene registry and submit the
