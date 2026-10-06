@@ -1266,6 +1266,8 @@ h1 {
 }
 .error {
   color: #f87171;
+  -webkit-user-select: text;
+  user-select: text;
 }
 .execute {
   padding: 9px 16px;
