@@ -1,0 +1,11 @@
+{
+  "name": "moonlight-admin",
+  "description": "Extensible admin menu for Selene",
+  "entrypoints": ["server/lua/init.lua"],
+  "ui": [
+    {
+      "id": "menu",
+      "entrypoint": "client/ui/dist/index.html"
+    }
+  ]
+}
