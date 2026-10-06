@@ -372,7 +372,7 @@ async function toggleAction(action: AdminAction, event: MouseEvent): Promise<voi
 
 async function expandFirstAvailableAction(): Promise<void> {
   const action = filteredActions.value[0];
-  if (!action) {
+  if (!action || action.parameters.length === 0) {
     return;
   }
   expandedActionId.value = action.id;
@@ -652,6 +652,7 @@ onBeforeUnmount(() => {
                 <span aria-hidden="true">{{ isFavorite(action.id) ? '★' : '☆' }}</span>
               </button>
               <button
+                v-if="action.parameters.length > 0"
                 class="toggle"
                 type="button"
                 :aria-expanded="expandedActionId === action.id"
@@ -663,9 +664,36 @@ onBeforeUnmount(() => {
                 </span>
                 <span class="chevron" aria-hidden="true">⌄</span>
               </button>
+              <div v-else class="action-summary">
+                <span>
+                  <strong>{{ action.label }}</strong>
+                  <small v-if="action.description">{{ action.description }}</small>
+                </span>
+              </div>
+              <p
+                v-if="action.parameters.length === 0 && result?.actionId === action.id"
+                class="result inline-result"
+                :class="{ error: !result.success }"
+                role="status"
+              >
+                {{ result.message }}
+              </p>
+              <button
+                v-if="action.parameters.length === 0"
+                class="execute inline-execute"
+                type="button"
+                :disabled="executingActionId === action.id"
+                @click="execute(action, $event.shiftKey)"
+              >
+                {{ executingActionId === action.id ? 'Executing…' : 'Execute' }}
+              </button>
             </div>
 
-            <form v-if="expandedActionId === action.id" class="form" @submit.prevent="execute(action)">
+            <form
+              v-if="action.parameters.length > 0 && expandedActionId === action.id"
+              class="form"
+              @submit.prevent="execute(action)"
+            >
               <div
                 v-for="parameter in action.parameters"
                 :key="parameter.name"
@@ -1011,9 +1039,9 @@ h1 {
 .favorite.active {
   color: #fbbf24;
 }
-.toggle {
+.toggle,
+.action-summary {
   display: flex;
-  width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -1021,9 +1049,34 @@ h1 {
   border: 0;
   background: transparent;
   color: #fafafa;
-  cursor: pointer;
   border-radius: 0 8px 8px 0;
   text-align: left;
+}
+.toggle {
+  width: 100%;
+  cursor: pointer;
+}
+.action-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.action-summary strong,
+.action-summary small {
+  display: block;
+}
+.action-summary strong {
+  font-size: 14px;
+}
+.action-summary small {
+  margin-top: 4px;
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 400;
+}
+.inline-execute {
+  align-self: center;
+  flex: 0 0 auto;
+  margin-right: 12px;
 }
 .toggle:hover,
 .toggle:focus-visible {
@@ -1263,6 +1316,12 @@ h1 {
   margin: 0;
   color: #a3e635;
   font-size: 12px;
+}
+.result.inline-result {
+  align-self: center;
+  flex: 1 1 auto;
+  margin-right: 12px;
+  text-align: right;
 }
 .error {
   color: #f87171;
