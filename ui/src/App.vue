@@ -97,7 +97,7 @@ const actionSchema = z.object({
 });
 
 const actionsPayloadSchema = z.object({
-  actions: z.array(actionSchema),
+  actions: z.preprocess(emptyTableAsArray, z.array(actionSchema)),
   targetOptions: z.record(z.string(), targetOptionsSchema),
 });
 const resultPayloadSchema = z.object({
