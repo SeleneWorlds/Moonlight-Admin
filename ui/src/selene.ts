@@ -54,7 +54,7 @@ export interface SeleneUiApi {
   readonly world: {
     getCameraCoordinate(): Coordinate;
     getCameraPosition(): Promise<{ x: number; y: number }>;
-    setCameraPosition(position: { x: number; y: number }): void;
+    setCameraPosition(position: { x: number; y: number }): Promise<Coordinate>;
     getControlledEntity(): WorldEntity | null;
     getMapTiles(coordinate?: Coordinate, width?: number, height?: number): MapTile[];
     projectCoordinate(coordinate: Coordinate): { x: number; y: number };
@@ -164,7 +164,7 @@ export const createMockSeleneUiApi = (): SeleneUiApi => {
     world: {
       getCameraCoordinate: () => ({ x: 0, y: 0, z: 0 }),
       getCameraPosition: async () => ({ x: 0, y: 0 }),
-      setCameraPosition: () => undefined,
+      setCameraPosition: async () => ({ x: 0, y: 0, z: 0 }),
       getControlledEntity: () => null,
       getMapTiles: () => [],
       projectCoordinate: () => ({ x: 0, y: 0 }),
