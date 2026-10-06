@@ -8,6 +8,7 @@ const emptyTableAsArray = (value: unknown): unknown =>
   value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0 ? [] : value;
 const registryOptionSchema = z.object({ value: z.string(), label: z.string(), visual: z.string().optional() });
 const registryOptionsSchema = z.preprocess(emptyTableAsArray, z.array(registryOptionSchema));
+const enumOptionSchema = z.object({ value: z.string(), label: z.string() });
 const targetOptionSchema = z.object({
   value: z.string(),
   label: z.string(),
@@ -48,6 +49,14 @@ const parameterSchema = z.discriminatedUnion('type', [
     type: z.literal('boolean'),
     required: z.boolean(),
     default: z.boolean().optional(),
+  }),
+  z.object({
+    name: z.string(),
+    label: z.string(),
+    type: z.literal('enum'),
+    required: z.boolean(),
+    default: z.string().optional(),
+    options: z.array(enumOptionSchema).min(1),
   }),
   z.object({
     name: z.string(),
@@ -111,6 +120,7 @@ const targetOptionsPayloadSchema = z.object({
 
 type AdminAction = z.infer<typeof actionSchema>;
 type RegistryParameter = Extract<AdminAction['parameters'][number], { type: 'registry' | 'target' }>;
+type EnumParameter = Extract<AdminAction['parameters'][number], { type: 'enum' }>;
 type CoordinateInput = { x: number | undefined; y: number | undefined; z: number | undefined };
 type ParameterValue = string | number | boolean | CoordinateInput | undefined;
 
@@ -139,6 +149,7 @@ const executingActionId = ref<string | null>(null);
 const closeOnSuccessActionId = ref<string | null>(null);
 const result = ref<{ actionId: string; success: boolean; message: string } | null>(null);
 const openRegistryKey = ref<string | null>(null);
+const openEnumKey = ref<string | null>(null);
 const registryQueries = reactive<Record<string, string>>({});
 const includeOffline = reactive<Record<string, boolean>>({});
 const pickingCoordinate = ref<{ actionId: string; parameterName: string } | null>(null);
@@ -372,6 +383,29 @@ async function expandFirstAvailableAction(): Promise<void> {
 
 function registryKey(actionId: string, parameterName: string): string {
   return `${actionId}:${parameterName}`;
+}
+
+function selectedEnumLabel(action: AdminAction, parameter: EnumParameter): string {
+  return parameter.options.find((option) => option.value === values[action.id]?.[parameter.name])?.label ?? 'Select…';
+}
+
+function toggleEnumDropdown(action: AdminAction, parameter: EnumParameter): void {
+  const key = registryKey(action.id, parameter.name);
+  openRegistryKey.value = null;
+  openEnumKey.value = openEnumKey.value === key ? null : key;
+}
+
+function selectEnumOption(action: AdminAction, parameter: EnumParameter, value: string | undefined): void {
+  values[action.id]![parameter.name] = value;
+  openEnumKey.value = null;
+}
+
+function closeEnumDropdown(key: string): void {
+  window.setTimeout(() => {
+    if (openEnumKey.value === key) {
+      openEnumKey.value = null;
+    }
+  });
 }
 
 function matchingRegistryOptions(parameter: RegistryParameter, key: string) {
@@ -668,6 +702,47 @@ onBeforeUnmount(() => {
                   class="checkbox"
                   type="checkbox"
                 />
+                <div v-else-if="parameter.type === 'enum'" class="select">
+                  <button
+                    class="enum-trigger"
+                    type="button"
+                    :aria-expanded="openEnumKey === registryKey(action.id, parameter.name)"
+                    :aria-controls="`${registryKey(action.id, parameter.name)}-options`"
+                    @click="toggleEnumDropdown(action, parameter)"
+                    @blur="closeEnumDropdown(registryKey(action.id, parameter.name))"
+                  >
+                    <span>{{ selectedEnumLabel(action, parameter) }}</span>
+                    <span aria-hidden="true">⌄</span>
+                  </button>
+                  <div
+                    v-if="openEnumKey === registryKey(action.id, parameter.name)"
+                    :id="`${registryKey(action.id, parameter.name)}-options`"
+                    class="options"
+                    role="listbox"
+                  >
+                    <button
+                      v-if="!parameter.required"
+                      type="button"
+                      role="option"
+                      :aria-selected="values[action.id]![parameter.name] === undefined"
+                      @mousedown.prevent
+                      @click="selectEnumOption(action, parameter, undefined)"
+                    >
+                      None
+                    </button>
+                    <button
+                      v-for="option in parameter.options"
+                      :key="option.value"
+                      type="button"
+                      role="option"
+                      :aria-selected="values[action.id]![parameter.name] === option.value"
+                      @mousedown.prevent
+                      @click="selectEnumOption(action, parameter, option.value)"
+                    >
+                      {{ option.label }}
+                    </button>
+                  </div>
+                </div>
                 <div v-else-if="parameter.type === 'coordinate'" class="coordinate-input">
                   <label v-for="axis in ['x', 'y', 'z'] as const" :key="axis">
                     <span>{{ axis.toUpperCase() }}</span>
@@ -1032,7 +1107,8 @@ h1 {
   background: #fb7185;
   transform: translateX(10px);
 }
-.field input:not(.checkbox) {
+.field input:not(.checkbox),
+.enum-trigger {
   width: 100%;
   min-width: 0;
   padding: 9px 10px;
@@ -1044,7 +1120,8 @@ h1 {
   font: inherit;
   font-weight: 500;
 }
-.field input:focus {
+.field input:focus,
+.enum-trigger:focus {
   border-color: #fb7185;
   box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.14);
 }
@@ -1091,6 +1168,13 @@ h1 {
 }
 .select {
   position: relative;
+}
+.enum-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
 }
 .options {
   position: absolute;

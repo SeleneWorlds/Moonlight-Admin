@@ -10,6 +10,7 @@ local supportedParameterTypes = {
     number = true,
     string = true,
     message = true,
+    enum = true,
     boolean = true,
     coordinate = true,
     registry = true,
@@ -35,7 +36,8 @@ local function normalizeParameter(parameter)
     assert(type(normalized.label) == "string", "parameter label must be a string")
 
     if parameter.default ~= nil then
-        local defaultType = (parameterType == "registry" or parameterType == "target" or parameterType == "message") and "string"
+        local defaultType = (parameterType == "registry" or parameterType == "target" or parameterType == "message"
+            or parameterType == "enum") and "string"
             or parameterType == "coordinate" and "table"
             or parameterType
         assert(type(parameter.default) == defaultType, "parameter default must match its type")
@@ -57,6 +59,19 @@ local function normalizeParameter(parameter)
         assert(normalized.min == nil or type(normalized.min) == "number", "parameter min must be a number")
         assert(normalized.max == nil or type(normalized.max) == "number", "parameter max must be a number")
         assert(normalized.step == nil or type(normalized.step) == "number", "parameter step must be a number")
+    elseif parameterType == "enum" then
+        assert(type(parameter.options) == "table" and #parameter.options > 0, "enum parameter options must be a list")
+        normalized.options = {}
+        local values = {}
+        for _, option in ipairs(parameter.options) do
+            assert(type(option) == "table", "enum parameter options must be tables")
+            assert(type(option.value) == "string" and option.value ~= "", "enum option value must be a non-empty string")
+            assert(type(option.label) == "string" and option.label ~= "", "enum option label must be a non-empty string")
+            assert(not values[option.value], "duplicate enum option value: " .. option.value)
+            values[option.value] = true
+            table.insert(normalized.options, { value = option.value, label = option.label })
+        end
+        assert(normalized.default == nil or values[normalized.default], "enum parameter default must match an option")
     elseif parameterType == "registry" then
         normalized.registry = assertIdentifier(parameter.registry, "parameter registry")
         assert(parameter.deferred == nil or type(parameter.deferred) == "boolean", "parameter deferred must be a boolean")
@@ -226,13 +241,23 @@ local function validateValues(action, supplied, player)
         if value == nil then
             assert(not parameter.required, parameter.label .. " is required")
         else
-            local valueType = (parameter.type == "registry" or parameter.type == "target" or parameter.type == "message") and "string"
+            local valueType = (parameter.type == "registry" or parameter.type == "target" or parameter.type == "message"
+                or parameter.type == "enum") and "string"
                 or parameter.type == "coordinate" and "table"
                 or parameter.type
             assert(type(value) == valueType, parameter.label .. " must be a " .. valueType)
             if parameter.type == "number" then
                 assert(parameter.min == nil or value >= parameter.min, parameter.label .. " is below its minimum")
                 assert(parameter.max == nil or value <= parameter.max, parameter.label .. " is above its maximum")
+            elseif parameter.type == "enum" then
+                local found = false
+                for _, option in ipairs(parameter.options) do
+                    if option.value == value then
+                        found = true
+                        break
+                    end
+                end
+                assert(found, parameter.label .. " is not valid")
             elseif parameter.type == "coordinate" then
                 for _, axis in ipairs({ "x", "y", "z" }) do
                     local component = value[axis]
