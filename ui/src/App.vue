@@ -530,6 +530,17 @@ async function focusSearch(): Promise<void> {
   searchInput.value?.select();
 }
 
+async function scrollExpandedActionIntoView(): Promise<void> {
+  await nextTick();
+  const actionId = expandedActionId.value;
+  if (!actionId) {
+    return;
+  }
+  [...(actionsList.value?.querySelectorAll<HTMLElement>('.action') ?? [])]
+    .find((element) => element.dataset.actionId === actionId)
+    ?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+}
+
 function setMenuOpen(open: boolean): void {
   isOpen.value = open;
   if (!open) {
@@ -541,6 +552,7 @@ function setMenuOpen(open: boolean): void {
   if (open) {
     requestActions();
     void focusSearch();
+    void scrollExpandedActionIntoView();
   }
 }
 
@@ -625,7 +637,7 @@ onBeforeUnmount(() => {
         <div ref="actionsList" class="actions">
           <p v-if="actions.length === 0" class="empty">No actions are available.</p>
           <p v-else-if="filteredActions.length === 0" class="empty">No matching actions.</p>
-          <article v-for="action in filteredActions" :key="action.id" class="action">
+          <article v-for="action in filteredActions" :key="action.id" class="action" :data-action-id="action.id">
             <div class="action-heading">
               <button
                 class="favorite"
