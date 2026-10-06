@@ -75,7 +75,9 @@ local function normalizeParameter(parameter)
     elseif parameterType == "registry" then
         normalized.registry = assertIdentifier(parameter.registry, "parameter registry")
         assert(parameter.deferred == nil or type(parameter.deferred) == "boolean", "parameter deferred must be a boolean")
-        normalized.deferred = true
+        assert(parameter.filter == nil or type(parameter.filter) == "function", "parameter filter must be a function")
+        normalized.deferred = parameter.deferred ~= false
+        normalized.filter = parameter.filter
     elseif parameterType == "target" then
         normalized.resolver = assertIdentifier(parameter.resolver, "parameter target resolver")
         assert(
@@ -90,35 +92,37 @@ local function normalizeParameter(parameter)
     return normalized
 end
 
-local function registryOptions(registryName, query, limit)
+local function registryOptions(registryName, query, limit, filter)
     local options = {}
     query = query and query:lower() or nil
     for _, entry in pairs(Registries.findAll(registryName)) do
-        local value = entry:getName()
-        local label = entry:getMetadata("name")
-        if label == nil then
-            local succeeded, fieldLabel = pcall(function()
-                return entry:getField("name")
-            end)
-            if succeeded then
-                label = fieldLabel
-            end
-        end
-        if label == nil or label == "" then
-            label = value
-        end
-        label = tostring(label)
-        if query == nil or label:lower():find(query, 1, true) or value:lower():find(query, 1, true) then
-            local option = { value = value, label = label }
-            local resolver = registryVisualResolvers[registryName]
-            if resolver then
-                local succeeded, visual = pcall(resolver, entry)
-                if succeeded and visual ~= nil then
-                    assert(type(visual) == "string", "registry visual resolver must return a string or nil")
-                    option.visual = visual
+        if filter == nil or filter(entry) then
+            local value = entry:getName()
+            local label = entry:getMetadata("name")
+            if label == nil then
+                local succeeded, fieldLabel = pcall(function()
+                    return entry:getField("name")
+                end)
+                if succeeded then
+                    label = fieldLabel
                 end
             end
-            table.insert(options, option)
+            if label == nil or label == "" then
+                label = value
+            end
+            label = tostring(label)
+            if query == nil or label:lower():find(query, 1, true) or value:lower():find(query, 1, true) then
+                local option = { value = value, label = label }
+                local resolver = registryVisualResolvers[registryName]
+                if resolver then
+                    local succeeded, visual = pcall(resolver, entry)
+                    if succeeded and visual ~= nil then
+                        assert(type(visual) == "string", "registry visual resolver must return a string or nil")
+                        option.visual = visual
+                    end
+                end
+                table.insert(options, option)
+            end
         end
     end
     table.sort(options, function(left, right)
@@ -163,10 +167,14 @@ local function publicDefinition(action, player, sharedTargetOptions)
     for _, parameter in ipairs(action.parameters) do
         local publicParameter = {}
         for key, value in pairs(parameter) do
-            publicParameter[key] = value
+            if key ~= "filter" then
+                publicParameter[key] = value
+            end
         end
         if parameter.type == "registry" then
-            publicParameter.options = {}
+            publicParameter.options = parameter.deferred
+                and {}
+                or registryOptions(parameter.registry, nil, nil, parameter.filter)
         elseif parameter.type == "target" then
             local optionSet = parameter.resolver .. (parameter.requireOnline and ":online" or ":all")
             publicParameter.optionSet = optionSet
@@ -267,7 +275,9 @@ local function validateValues(action, supplied, player)
                     )
                 end
             elseif parameter.type == "registry" then
-                assert(Registries.findByName(parameter.registry, value) ~= nil, parameter.label .. " is not valid")
+                local entry = Registries.findByName(parameter.registry, value)
+                assert(entry ~= nil, parameter.label .. " is not valid")
+                assert(parameter.filter == nil or parameter.filter(entry), parameter.label .. " is not valid")
             elseif parameter.type == "target" then
                 local found = false
                 for _, option in ipairs(targetOptions(parameter.resolver, player, parameter.requireOnline)) do
@@ -339,7 +349,7 @@ Network.handlePayload("moonlight-admin:search-registry", function(player, payloa
                 actionId = action.id,
                 parameterName = parameter.name,
                 query = query,
-                options = registryOptions(parameter.registry, query, 50),
+                options = registryOptions(parameter.registry, query, 50, parameter.filter),
             })
             return
         end

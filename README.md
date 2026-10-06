@@ -44,8 +44,23 @@ Enum parameters render a dropdown from their static `options` list and submit th
 Coordinate parameters submit an `{ x, y, z }` table and can be entered manually or
 selected from the world with the tile picker.
 Registry parameters are populated from the named Selene registry and submit the
-selected entry's identifier. Registry options are not included in the initial action
-payload; they are searched server-side and returned in sets of at most 50 matches.
+selected entry's identifier. By default, options are searched server-side and returned
+in sets of at most 50 matches. Set `deferred = false` to include all matching options in
+the initial action payload. An optional `filter` function receives each registry entry;
+only entries for which it returns `true` are offered and accepted:
+
+```lua
+{
+    name = "item",
+    label = "Key",
+    type = "registry",
+    registry = "illarion:items",
+    deferred = false,
+    filter = function(entry)
+        return entry:getField("script") == "item.keys"
+    end,
+}
+```
 Target parameters use named, player-aware resolvers.
 `isAvailable` is optional and controls both visibility and execution authorization.
 Parameter values are validated server-side before `execute` is called.
