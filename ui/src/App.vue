@@ -84,7 +84,7 @@ const actionSchema = z.object({
   id: z.string(),
   label: z.string(),
   description: z.string().optional(),
-  parameters: z.array(parameterSchema),
+  parameters: z.preprocess(emptyTableAsArray, z.array(parameterSchema)),
 });
 
 const actionsPayloadSchema = z.object({
