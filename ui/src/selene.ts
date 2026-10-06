@@ -53,6 +53,8 @@ export interface SeleneUiApi {
   };
   readonly world: {
     getCameraCoordinate(): Coordinate;
+    getCameraPosition(): Promise<{ x: number; y: number }>;
+    setCameraPosition(position: { x: number; y: number }): void;
     getControlledEntity(): WorldEntity | null;
     getMapTiles(coordinate?: Coordinate, width?: number, height?: number): MapTile[];
     projectCoordinate(coordinate: Coordinate): { x: number; y: number };
@@ -98,7 +100,7 @@ export const createMockSeleneUiApi = (): SeleneUiApi => {
   const passthroughKeys = new Map<string, number>();
 
   return {
-    apiVersion: 9,
+    apiVersion: 10,
     resolveAsset: async (path) => `/${path.replace(/^client\/ui\/dist\//, '')}`,
     visuals: {
       getDefinition: async (identifier) => {
@@ -161,6 +163,8 @@ export const createMockSeleneUiApi = (): SeleneUiApi => {
     },
     world: {
       getCameraCoordinate: () => ({ x: 0, y: 0, z: 0 }),
+      getCameraPosition: async () => ({ x: 0, y: 0 }),
+      setCameraPosition: () => undefined,
       getControlledEntity: () => null,
       getMapTiles: () => [],
       projectCoordinate: () => ({ x: 0, y: 0 }),
