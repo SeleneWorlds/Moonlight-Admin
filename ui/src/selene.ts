@@ -43,6 +43,7 @@ export interface SeleneUiApi {
     isPassthroughKey(key: string): boolean;
     hasEditableFocus(): boolean;
     onPointerDown(callback: (event: SelenePointerEvent) => void): () => void;
+    onPointerMove(callback: (event: SelenePointerEvent) => void): () => void;
     onPointerUp(callback: (event: SelenePointerEvent) => void): () => void;
   };
   readonly network: {
@@ -97,7 +98,7 @@ export const createMockSeleneUiApi = (): SeleneUiApi => {
   const passthroughKeys = new Map<string, number>();
 
   return {
-    apiVersion: 8,
+    apiVersion: 9,
     resolveAsset: async (path) => `/${path.replace(/^client\/ui\/dist\//, '')}`,
     visuals: {
       getDefinition: async (identifier) => {
@@ -147,6 +148,7 @@ export const createMockSeleneUiApi = (): SeleneUiApi => {
         );
       },
       onPointerDown: () => () => undefined,
+      onPointerMove: () => () => undefined,
       onPointerUp: () => () => undefined,
     },
     network: {
