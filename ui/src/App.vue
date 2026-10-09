@@ -155,6 +155,7 @@ const includeOffline = reactive<Record<string, boolean>>({});
 const pickingCoordinate = ref<{ actionId: string; parameterName: string } | null>(null);
 
 const unsubscribers: Array<() => void> = [];
+let openAfterActions = false;
 let releaseMenuKeys: (() => void) | undefined;
 let releasePickerKeys: (() => void) | undefined;
 let releasePickerPointer: (() => void) | undefined;
@@ -278,6 +279,9 @@ function receiveActions(payload: ClientNetworkPayload): void {
     return;
   }
   actions.value = parsed.data.actions;
+  if (actions.value.length === 0) {
+    setMenuOpen(false);
+  }
   for (const action of actions.value) {
     for (const parameter of action.parameters) {
       if (parameter.type === 'target') {
@@ -292,6 +296,10 @@ function receiveActions(payload: ClientNetworkPayload): void {
         registryQueries[key] = selected?.label ?? '';
       }
     }
+  }
+  if (openAfterActions) {
+    openAfterActions = false;
+    setMenuOpen(actions.value.length > 0);
   }
 }
 
@@ -542,6 +550,9 @@ async function scrollExpandedActionIntoView(): Promise<void> {
 }
 
 function setMenuOpen(open: boolean): void {
+  if (open && actions.value.length === 0) {
+    return;
+  }
   isOpen.value = open;
   if (!open) {
     openRegistryKey.value = null;
@@ -550,7 +561,6 @@ function setMenuOpen(open: boolean): void {
   releaseMenuKeys?.();
   releaseMenuKeys = open ? selene.input.captureKeys('Escape', 'Enter') : undefined;
   if (open) {
-    requestActions();
     void focusSearch();
     void scrollExpandedActionIntoView();
   }
@@ -580,7 +590,13 @@ function handleMenuKeydown(event: KeyboardEvent): void {
     }
     return;
   }
-  setMenuOpen(shouldClose ? false : !isOpen.value);
+  if (shouldClose || isOpen.value || openAfterActions) {
+    openAfterActions = false;
+    setMenuOpen(false);
+  } else {
+    openAfterActions = true;
+    requestActions();
+  }
 }
 
 onMounted(() => {
